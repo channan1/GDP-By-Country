@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<head>
+    <!-- add title -->
+    <title>GDP Change by Country</title>
+    <!-- import required libraries here -->
+    <script type="text/javascript" src="../lib/d3.v5.min.js"></script>
+    <script type="text/javascript" src="../lib/d3-dsv.min.js"></script>
+    <script type="text/javascript" src="../lib/d3-legend.min.js"></script>
+    <script type="text/javascript" src="../lib/d3-tip.min.js"></script>
+    
+    <style>
+        /* define CSS rules here */
+        #tooltip {
+            position: absolute;
+            width: 200px;
+            height: auto;
+            padding: 10px;
+            background-color: blanchedalmond;
+            box-shadow: 4px 4px 10px rgba(0,0,0,0.4);
+            pointer-events: none;
+
+        }
+
+        #tooltip.hidden {
+            display: none;
+
+        }
+
+        /* #tooltip p {
+            margin: 0;
+            font-family: sans-serif;
+            font-size: 16px;
+            line-height: 20px;
+        } */
+    </style>
+
+    <title></title>
+</head>
+
+
+<body>
+    <!-- Add heading for the visualization -->
+    
+    <!-- Create dropdown element here. Options should be added after reading in game file, they should not be created here.-->
+    
+    <div height=1000px width=2000px><select id="gameDropdown">
+    </select></div>
+
+    <script>
+    
+        // enter code to define margin and dimensions for svg
+        margin = {top: 10,bottom: 10, left:10, right:10}
+        w = 1000
+        h = 500
+        
+        // enter code to create svg
+        let svg = d3.select("body").append("svg")
+        .attr("id","cloropleth")
+        .attr("height", h)
+        .attr("width", w)
+
+        let countries = svg.append("g")
+        .attr("id","countries")
+
+        let legend = svg.append("g")
+         .attr("id","legend")
+
+        // enter code to create color scale
+        colorArray = ['darkred','red', 'white', 'green', 'darkgreen']
+        
+        // enter code to define tooltip
+        tooltip = d3.select("body").append("div")
+        .attr("id", "tooltip")
+        //Added my own code below here.
+        .attr("class", "tooltip")
+        .style("background-color", "white")
+        .style("border", "solid")
+        .style("border-width", "2px")
+        .style("border-radius", "5px")
+        .style("padding", "5px")
+
+        // .attr("class","hidden")
+        // .html("<p><span id = 'country'></span></br><span id = 'game'></span></br><span id = 'avg_rating'></span></br><span id = 'num_of_users'></span></p></br>")
+        
+        // enter code to define projection and path required for Choropleth
+        // For grading, set the name of functions for projection and path as "projection" and "path"
+        var projection = d3.geoEquirectangular().translate([w/2,h/2]).scale(150).center([0,20])
+        var path = d3.geoPath().projection(projection)
+
+        // define any other global variables
+        var world = d3.json("world_countries.json")
+        var gdpData = d3.csv("API_NY.GDP.MKTP.KD.ZG_DS2_en_csv_v2_76269-copy.csv")
+        let c = 0
+
+        Promise.all([
+            // enter code to read files
+            world, gdpData
+        ]).then(
+            // enter code to call ready() with required arguments
+            function(values){
+                ready(1,values[0], values[1])
+            }
+        );
+        
+        // this function should be called once the data from files have been read
+        // world: topojson from world_countries.json
+        // gameData: data from ratings-by-country.csv
+        
+        function ready(error, world, gdpData) {
+            
+            // console.log("GAME DATA")
+            // console.log(gdpData)
+            // console.log(gdpData.columns)
+            // enter code to extract all unique games from gameData
+            unique_years = []
+            for (let i = 0;i<gdpData.columns.length;i++){
+                // console.log(gdpData.columns[i])
+                if (!unique_years.includes(gdpData.columns[i]) && gdpData.columns[i].length == 4){unique_years.push(gdpData.columns[i])}
+                //if (!unique_years.includes(gdpData[i].Game)){unique_years.push(gdpData[i].Game)}
+            }
+
+            unique_years.sort()
+            unique_years.reverse()
+
+            // console.log("FINAL ARRAY")
+            // console.log(unique_years)
+
+            // enter code to append the game options to the dropdown
+            d3.select("#gameDropdown").selectAll("option")
+            .data(unique_years)
+            .enter()
+            .append("option")
+            .text(function (d){ return d})
+            .attr("value", function (d){return d})
+            
+            // event listener for the dropdown. Update choropleth and legend when selection changes. Call createMapAndLegend() with required arguments.
+            d3.select("#gameDropdown").on("change", function(){
+                year = this.options[this.selectedIndex].value
+                createMapAndLegend(world,gdpData,this.options[this.selectedIndex].value)
+            })
+            // create Choropleth with default option. Call createMapAndLegend() with required arguments.
+            createMapAndLegend(world,gdpData,year=unique_years[0])
+
+        }
+
+        // this function should create a Choropleth and legend using the world and gameData arguments for a selectedGame
+        // also use this function to update Choropleth and legend when a different game is selected from the dropdown
+        function createMapAndLegend(world, gdpData, selectedYear){
+
+            selectedYearData = gdpData.filter((x)=>x[selectedYear])
+            // av_gdp = selectedYearData.map((d)=> +d["Average Rating"])
+            
+            const color = d3.scaleLinear().domain([-30, -10, 0, 10, 30]).range(colorArray)
+
+            countries.remove()
+            legend.remove()
+
+            countries = svg.append("g")
+             .attr("id","countries")
+
+            legend = svg.append("g")
+             .attr("id","legend")
+             .attr("transform", "translate("+(w-120)+",20)")
+
+
+            // tooltip.html(function (d){ return d.properties.name})
+
+            // countries.call(tip)
+            
+            let return_val = {}
+            
+            
+            countries.selectAll("path")
+            .data(world.features)
+            .enter()
+            .append("path")
+            .attr("class", "country")
+            .attr("d", path)
+            .attr("fill", function (d,i){
+                    // console.log("HERE: ")
+                    obj = selectedYearData.find(o=>o["Country Code"]===d.id)
+                    if (obj !== undefined && obj[selectedYear] != ""){
+                        // console.log(obj[selectedYear])
+                        return color(obj[selectedYear])
+                    }else{
+                        if (obj != undefined){
+                            // console.log("GRAY", obj[selectedYear])
+                        }else{
+                            // console.log("GRAY", obj)
+                        }
+                        return d3.color("gray")
+                    }
+            })
+            .style('stroke',"black")
+            .style('stroke-width','0.5px')
+            .on("mouseover", mouseover)
+            .on("mousemove", function(d){
+                // obj = {}
+                if (gdpData.find(o=>o["Country Code"] === d.id) == undefined){
+                    return_val[selectedYear] = "N/A"
+                }else{
+                    obj = gdpData.find(o=>o["Country Code"] === d.id)
+                    if (Number.isNaN(parseFloat(obj[selectedYear]))){return_val[selectedYear] = "N/A"}
+                    else{return_val[selectedYear]=Math.round(parseFloat(obj[selectedYear]) * 100)/100 + "%"}
+                }
+                tooltip.html("Country: " + d.properties.name + "</br>Year: " + selectedYear + "</br>GDP Growth: " + return_val[selectedYear])
+                .attr("position","absolute")
+                .style("left", (d3.event.pageX + 50) + "px")
+                .style("top", (d3.event.pageY - 20) + "px")
+            })
+            .on("mouseout", mouseleave)
+
+            const gradient = legend.append("defs")
+             .append("linearGradient")
+             .attr("id", "colorGradient")
+             .attr("x1", "0%")
+             .attr("x2", "0%")
+             .attr("y1", "0%")
+             .attr("y2", "100%")
+
+            gradient.append("stop")
+             .attr("offset", "0%")
+             .attr("stop-color", color(30))
+            
+            gradient.append("stop")
+            .attr("offset", "25%")
+            .attr("stop-color", color(10)) 
+            
+            gradient.append("stop")
+             .attr("offset", "50%")
+             .attr("stop-color",color(0))
+            
+            gradient.append("stop")
+            .attr("offset", "75%")
+            .attr("stop-color",color(-10))
+
+            gradient.append("stop")
+            .attr("offset", "100%")
+            .attr("stop-color",color(-30))
+            
+            legend.append('rect')
+            .attr("x", -825)
+            .attr("y", 250)
+            .attr("width", 20)
+            .attr("height", 200)
+            .style("fill", "url(#colorGradient)")
+            .attr("stroke",'black')
+
+            legend.append("text")
+            .attr("x", -867)
+            .attr("y", 250 + 11)
+            .text("+30%")
+            legend.append("text")
+            .attr("x", -850)
+            .attr("y", 250+107)
+            .text("0%")
+            legend.append("text")
+            .attr("x", -865)
+            .attr("y", 250+200-3)
+            .text("-30%")
+            legend.append("text")
+            .attr("x", -550)
+            .attr("y", 40)
+            .text("GDP Change by Country from 1961 to 2023")
+            .attr("font-weight","bold")
+            .attr("font-family", "Arial")
+            .attr("font-size","20")
+
+            legend.append("text")
+            .attr("x", -515)
+            .attr("y", 55)
+            .text("Data source: World Bank national accounts data, and OECD National Accounts data.")
+            .attr("font-size", 10)
+
+
+            // legend_append = d3.legendColor()
+            // .labelFormat(d3.format(".2f"))
+            // .useClass(false)
+            // .titleWidth(100)
+            // .scale(color)
+            // .labels(["-30%","-10%","0%","10%","30%"])
+
+            // d3.select("#legend")
+            // .call(legend_append)
+        }
+
+        let mouseover = function (d){
+            tooltip.style("opacity", 1)
+            
+            d3.select(this)
+            .style("stroke","black")
+            .style("stroke-width", "1.5px")
+            .style("opacity", 1)
+        }
+
+        let mouseleave = function (d){
+            tooltip.style("opacity", 0)
+
+            d3.select(this)
+            .style("stroke", "black")
+            .style("stroke-width", "0.5px")
+        }
+
+    </script>
+
+</body>
+
+</html>
