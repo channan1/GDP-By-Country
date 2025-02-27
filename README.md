@@ -8,5 +8,5 @@ First option is to download the files for this repository to your system and run
 
 Alternatively, you can open the terminal inside 
 
-https://github.com/user-attachments/assets/f29e450a-f585-4a7d-9398-ce2a39ba3257
+![chrome-capture-2024-4-2](https://github.com/user-attachments/assets/f29e450a-f585-4a7d-9398-ce2a39ba3257)
 
