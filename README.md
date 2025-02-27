@@ -8,4 +8,5 @@ First option is to download the files for this repository to your system and run
 
 Alternatively, you can open the terminal inside 
 
-![VideoGif](https://github.com/user-attachments/assets/3d263a69-8b86-4ce4-8095-cd9827062133)
+
+![VideoGif](https://github.com/user-attachments/assets/2780123d-fbb6-45a6-ac6e-d551d2930423)
